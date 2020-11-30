@@ -1,0 +1,329 @@
+#paramtre
+#loi de poisson
+lam<-0.144
+
+#loi Binome selon KARLIS
+r<-0.128/0.114
+q<-1-0.114
+
+
+
+#loi de poisson generalise selon KARLIS
+lamGP<-0.136
+thetaGP<-0.059
+
+
+#Calcul de g(4,lambda,theta) par algorithme recursif
+
+g0<-exp(-lamGP)
+k0 = 20 #on suppose qu'on regardera 
+g_k <- rep(-1,20)
+g_k[1] <- g0
+# fX n'ayant que 11 valeurs (0,1,..,10), 
+fung_k <- function(k, l, t){
+  if (k==0) return(exp(-l))
+  s <- 0
+  for (i in 1:k){
+    s<-s+ (t+l*i/k)*fung_k(k-i,l+t,t)*fX[i+1]
+  }
+  s<- s*(l/(l+t))
+  return(s)
+}
+
+fS_Gen_poiss<-rep(0,4)
+for (i in 0:4) {
+  
+  fS_Gen_poiss[i+1]<-fung_k(i,lamGP,thetaGP)
+  print(fS_Gen_poiss)
+}
+
+
+
+#ESPERANCE selon les formules du cours
+EN_P<-lam
+
+EN_BN<-r*(1-q)/q
+
+EN_GP<-lamGP/(1-thetaGP)
+
+cbind(EN_P,EN_BN,EN_GP)
+
+#VARIANCE selon les formules de cours
+varN_P<-lam
+
+varN_BN<-r*(1-q)/q^2
+
+varN_GP<-lamGP/(1-thetaGP)^3
+
+cbind(varN_P,varN_BN,varN_GP)
+
+#densité
+k<-0:100
+fN_P<-dpois(k,lam)
+fN_BN<-dnbinom(k,r,q)
+fN_GP<-(lamGP*(lamGP+k*thetaGP)^(k-1) * exp(-lamGP-k*thetaGP))/factorial(k)
+
+
+cbind(k,fN_P,fN_BN,fN_GP)
+
+yy<-c(fN_P,fN_BN,fN_GP)
+xx<-k
+
+plot(k, fN_P,type="l",lty=1, lwd=2,main="Fonction de répartition",col="blue")
+lines(k,fN_BN,col="green", lty=1, lwd=2)
+lines(k,fN_GP,col="purple", lty=2, lwd=2)
+
+
+cbind(fN_P,fN_BN,fN_GP)
+#verifications
+sum(fN_P)
+sum(fN_BN)
+sum(fN_GP)
+
+sum(k*fN_P)
+sum(k*fN_BN)
+sum(k*fN_GP)
+
+
+#fonction de repartition
+FN_P<-ppois(k,lam)
+FN_BN<-pnbinom(k,r,q)
+FN_GP<-cumsum(fN_GP)
+
+plot(k, FN_P,type="l",lty=1, lwd=2,main="Fonction de répartition",col="blue")
+lines(k,FN_BN,col="green", lty=1, lwd=2)
+lines(k,FN_GP,col="purple", lty=2, lwd=2)
+
+
+#VALUE AT RISK
+kappa<-c(0.5,0.9,0.99,0.999)
+VaRN_P<-qpois(kappa,lam)
+VaRN_BN<-qnbinom(kappa,r,q)
+VaRN_GP<-sapply(kappa, function(kappa) VaRN(kappa))
+
+VaRN<-function(kappa) {
+  sum(FN_GP<kappa)
+}
+
+cbind(kappa,VaRN_P,VaRN_BN,VaRN_GP)
+
+#X : densité
+j<-seq(1,10,1)
+mu<-log(3)-0.08
+sig<-0.4
+
+FY1<-plnorm(10*j,mu,sig)
+FY2<-plnorm(10*(j-1),mu,sig)
+FY3<-plnorm((100),mu,sig)
+
+fXP1<-(FY11-FY22)/(FY33)
+
+fX<-c(0,fXP1,rep(0,90))
+
+
+sum(fX)
+
+
+
+#espérance & variance de X
+EX<-sum(0:100*fX)
+varX<-sum((0:100)^2*fX)-EX^2
+
+#espérance de S
+ES_P<-EN_P*EX
+ES_BN<-EN_BN*EX
+ES_GP<-EN_GP*EX
+
+cbind(ES_P,ES_BN,ES_GP)
+
+#variance de S
+varS_P<-EN_P*varX+varN_P*EX^2
+varS_BN<-EN_BN*varX+varN_BN*EX^2
+varS_GP<-EN_GP*varX+varN_GP*EX^2
+
+cbind(varX,varS_P,varS_BN,varS_GP)
+
+
+#densité de S poisson
+panjer.poisson<-function(lam,fB,xmax)
+{
+  # Algorithme de Panjer
+  # Cas Poisson
+  # Loi discrete pour B
+  aa<-0
+  bb<-lam
+  ll<-length(fB)
+  fX<-exp(lam*(fB[1]-1))
+  fB<-c(fB,rep(0,xmax-ll+1))
+  for (i in 1:xmax)
+  {
+    j<-i+1
+    fX<-c(fX,(1/(1-aa*fB[1]))*sum(fB[2:j]*fX[i:1]*(bb*(1:i)/i+aa)))    
+  }
+  
+  return(fX)
+}
+
+fS_P<-panjer.poisson(lam,fX,100)
+
+
+#Esperance et variance par algo pour verifications
+ES_P_Algo<-sum(c(0:100)*fS_P)
+
+varS_P_Algo<-sum(c(0:100)^2 * fS_P)- ES_P_Algo^2
+
+cbind(ES_P_Algo,ES_P,varS_P_Algo,varS_P)
+
+
+
+#densité de S Binom Neg
+panjer.nbinom1<-function(rr,qq,ff,smax)
+{
+  # Algorithme de Panjer
+  # Cas Binomiale negative 1
+  # Loi discrete pour B
+  aa<-1-qq
+  bb<-aa*(rr-1)
+  ll<-length(ff)
+  ffs<-(qq/(1-(1-qq)*ff[1]))^rr
+  ff<-c(ff,rep(0,smax-ll+1))
+  for (i in 1 :smax)
+  {
+    j<-i+1
+    ffs<-c(ffs,(1/(1-aa*ff[1]))*sum(ff[2 :j]*ffs[i :1]*(bb*(1 :i)/i+aa)))
+  }
+  return(ffs)
+}
+
+fS_BN1<-panjer.nbinom1(r,q,fX,100)
+sum(fS_BN1)
+
+
+#Esperance et variance par algo pour verifications
+ES_BN_Algo<-sum(c(0:100)*fS_BN1)
+
+varS_BN_Algo<-sum(c(0:100)^2 * fS_BN1)- ES_BN_Algo^2
+
+cbind(ES_BN_Algo,ES_BN,varS_BN_Algo,varS_BN)
+
+#densité de S Poisson Generalisee
+
+g0<-exp(-lamGP)
+k0 = 20 #on suppose qu'on regardera 
+g_k <- rep(-1,20)
+g_k[1] <- g0
+# fX n'ayant que 11 valeurs (0,1,..,10), 
+fung_k <- function(k, l, t){
+  if (k==0) return(exp(-l))
+  s <- 0
+  for (i in 1:k){
+    s<-s+ (t+l*i/k)*fung_k(k-i,l+t,t)*fX[i+1]
+  }
+  s<- s*(l/(l+t))
+  return(s)
+}
+
+fS_Gen_poiss<-rep(0,25)
+for (i in 0:25) {
+  
+  fS_Gen_poiss[i+1]<-fung_k(i,lamGP,thetaGP)
+  print(fS_Gen_poiss)
+}
+
+fS_GP<-c(fS_Gen_poiss,rep(0,100-length(fS_Gen_poiss)+1))
+
+
+#Esperance et variance par algo pour verifications
+ES_GP_Algo<-sum(c(0:100)*fS_GP)
+
+varS_GP_Algo<-sum(c(0:100)^2 * fS_GP)- ES_GP_Algo^2
+
+cbind(ES_GP_Algo,ES_GP,varS_GP_Algo,varS_GP)
+
+
+#graphique des densités de S
+xx<-0:100
+plot(xx,cumsum(fS_P),type="l",lty=1, lwd=2,main="Fonction de répartition",col="blue",xlim=c(0,15),ylim=c(0.8,1.1),xlab="k", ylab="Probabilités cumulées")
+lines(xx,cumsum(fS_BN1),col="green", lty=1, lwd=2)
+lines(xx,cumsum(fS_GP),col="purple", lty=2, lwd=2)
+legend(0.15,1.1, legend=c("fmp de S_P","fmp de S","fmp de S_BN"),lty=c(1,2,2), cex=1.1,bg='lightgrey',lwd=2:2,col=c("blue","purple","green"))
+
+
+#Fonction de repartition de S
+
+FS_P<-cumsum(fS_P)
+FS_BN<-cumsum(fS_BN1)
+FS_GP<-cumsum(fS_GP)
+
+
+
+#VALUE AT RISK
+kappa<-c(0.5,0.9,0.99,0.999)
+
+
+VaRS1<-function(kappa) {
+  sum(FS_P<kappa)
+}
+
+VaRS_P<-sapply(kappa, function(kappa) VaRS1(kappa))
+
+VaRS2<-function(kappa) {
+  sum(FS_BN<kappa)
+}
+
+VaRS3<-function(kappa) {
+  sum(FS_GP<kappa)
+}
+
+VaRS_P<-sapply(kappa, function(kappa) VaRS1(kappa))
+VaRS_BN<-sapply(kappa, function(kappa) VaRS2(kappa))
+VaRS_GP<-sapply(kappa, function(kappa) VaRS3(kappa))
+
+cbind(kappa,VaRS_P,VaRS_BN,VaRS_GP)
+
+
+#calc de la TVAR
+#Poisson
+ET1_P<-sum(c(VaRS_P[1]+1:100)*fS_P[c(VaRS_P[1]+2:101)])
+ET2_P<-sum(c(4:100)*fS_P[5:101])
+ET3_P<-sum(c(7:100)*fS_P[8:101])
+ET4_P<-sum(c(11:100)*fS_P[12:101])
+
+
+TVaR1_P<-(1/(1-0.5))*ET1_P+(1/(1-0.5))*VaRS_P[1]*(FS_P[1]-0.5)
+TVaR2_P<-(1/(1-0.9))*ET2_P+(1/(1-0.9))*VaRS_P[2]*(FS_P[4]-0.9)
+TVaR3_P<-(1/(1-0.99))*ET3_P+(1/(1-0.99))*VaRS_P[3]*(FS_P[7]-0.99)
+TVaR4_P<-(1/(1-0.999))*ET4_P+(1/(1-0.999))*VaRS_P[4]*(FS_P[11]-0.999)
+
+TVaR_P<-cbind(TVaR1_P,TVaR2_P,TVaR3_P,TVaR4_P)
+
+#Binom Neg
+ET1_BN<-sum(c(VaRS_BN[1]+1:100)*fS_BN1[c(VaRS_BN[1]+2:101)])
+ET2_BN<-sum(c(4:100)*fS_BN1[5:101])
+ET3_BN<-sum(c(8:100)*fS_BN1[9:101])
+ET4_BN<-sum(c(12:100)*fS_BN1[13:101])
+
+TVaR1_BN<-(1/(1-0.5))*ET1_BN+(1/(1-0.5))*VaRS_BN[1]*(FS_BN[1]-0.5)
+TVaR2_BN<-(1/(1-0.9))*ET2_BN+(1/(1-0.9))*VaRS_BN[2]*(FS_BN[4]-0.9)
+TVaR3_BN<-(1/(1-0.99))*ET3_BN+(1/(1-0.99))*VaRS_BN[3]*(FS_BN[8]-0.99)
+TVaR4_BN<-(1/(1-0.999))*ET4_BN+(1/(1-0.999))*VaRS_BN[4]*(FS_BN[12]-0.999)
+
+TVaR_BN<-cbind(TVaR1_BN,TVaR2_BN,TVaR3_BN,TVaR4_BN)
+
+#Poisson Généralisée
+ET1_GP<-sum(c(VaRS_GP[1]+1:100)*fS_GP[c(VaRS_GP[1]+2:101)])
+ET2_GP<-sum(c(4:100)*fS_GP[5:101])
+ET3_GP<-sum(c(8:100)*fS_GP[9:101])
+ET4_GP<-sum(c(12:100)*fS_GP[13:101])
+
+TVaR1_GP<-(1/(1-0.5))*ET1_GP+(1/(1-0.5))*VaRS_GP[1]*(FS_GP[1]-0.5)
+TVaR2_GP<-(1/(1-0.9))*ET2_GP+(1/(1-0.9))*VaRS_GP[2]*(FS_GP[4]-0.9)
+TVaR3_GP<-(1/(1-0.99))*ET3_GP+(1/(1-0.99))*VaRS_GP[3]*(FS_GP[8]-0.99)
+TVaR4_GP<-(1/(1-0.999))*ET4_GP+(1/(1-0.999))*VaRS_GP[4]*(FS_GP[12]-0.999)
+
+
+TVaR_GP<-cbind(TVaR1_GP,TVaR2_GP,TVaR3_GP,TVaR4_GP)
+
+round(TVaR_P,digits = 3)
+round(TVaR_BN,digits = 3)
+round(TVaR_GP,digits = 3)
