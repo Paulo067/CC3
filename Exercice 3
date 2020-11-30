@@ -1,0 +1,73 @@
+#parametres
+
+a1<-1.2
+a2<-1.5
+a3<-1.8
+
+lam<-1
+
+x0<-1
+
+x<-seq(1,60,0.001)
+
+FB1<-1-((lam+x0)/(lam+x))^a1
+FB2<-1-((lam+x0)/(lam+x))^a2
+FB3<-1-((lam+x0)/(lam+x))^a3
+
+cbind(FB1,FB2,FB3)
+
+EB1<-(a1*x0)/(a1-1)+(lam/(a1-1))
+EB2<-a2/(a2-1)*x0+lam*(1/(a2-1))
+EB3<-a3/(a3-1)*x0+lam*(1/(a3-1))
+cbind(EB1,EB2,EB3)
+
+plot(x, FB1,type="l",lty=1, lwd=2,main="Fonction de répartition de Bi", xlab="x", ylab="F(x)",col="blue")
+lines(x,FB2,col="green", lty=1, lwd=2)
+lines(x,FB3,col="purple", lty=1, lwd=2)
+legend(45, 0.2, legend=c("FB1","FB2", 
+                          "FB3"), col=c("blue", "green", "purple"), 
+       lty=c(1,1,1), cex=1.1,bg='lightgrey',lwd=2:2)
+
+
+#VaR
+kappa<-seq(0.9,1,0.001)
+
+
+VaR1<-((lam+x0)/((1-kappa)^(1/a1)))-lam
+VaR2<-((lam+x0)/((1-kappa)^(1/a2)))-lam
+VaR3<-((lam+x0)/((1-kappa)^(1/a3)))-lam
+
+cbind(kappa,VaR1,VaR2,VaR3)
+
+plot(kappa, VaR1,type="l",lty=1, lwd=2,main="Value at Risk", xlab="kappa", ylab="VaR",col="blue")
+lines(kappa,VaR2,col="green", lty=1, lwd=2)
+lines(kappa,VaR3,col="purple", lty=1, lwd=2)
+legend(0.90, 600, legend=c("VaR de B1","VaR de B2", 
+                       "VaR de B3"), col=c("blue", "green", "purple"), 
+     lty=c(1,1,1), cex=1.1,bg='lightgrey',lwd=2:2)
+
+#TVAR
+TVaR1<-(a1/(a1-1))*VaR1+(lam/(a1-1))
+TVaR2<-(a2/(a2-1))*VaR2+(lam/(a2-1))
+TVaR3<-(a3/(a3-1))*VaR3+(lam/(a3-1))
+cbind(kappa,TVaR1,TVaR2,TVaR3)
+
+plot(kappa, TVaR1,type="l",lty=1, lwd=2,main="Tail Value at Risk", xlab="kappa", ylab="TVaR",col="blue",ylim=c(0,4000))
+lines(kappa,TVaR2,col="green", lty=1, lwd=2)
+lines(kappa,TVaR3,col="purple", lty=1, lwd=2)
+legend(0.90, 4000, legend=c("TVaR de B1","TVaR de B2", 
+                             "TVaR de B3"), col=c("blue", "green", "purple"), 
+       lty=c(1,1,1), cex=1.1,bg='lightgrey',lwd=2:2)
+
+#verification
+k1<-0
+varb1t<-((lam+x0)/((1-k1)^(1/a1)))-lam
+varb2t<-((lam+x0)/((1-k1)^(1/a2)))-lam
+varb3t<-((lam+x0)/((1-k1)^(1/a3)))-lam
+
+
+tvarb1t<-(a1/(a1-1))*varb1t+(lam/(a1-1))
+tvarb2t<-(a2/(a2-1))*varb2t+(lam/(a2-1))
+tvarb3t<-(a3/(a3-1))*varb3t+(lam/(a3-1))
+
+cbind(tvarb1t,tvarb2t,tvarb3t)
