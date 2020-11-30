@@ -1,0 +1,181 @@
+#parametres
+beta1<-1/10
+beta2<-1/2
+p1<-2
+p2<-10
+
+# Espérance
+
+EB1<-1/beta1
+EB2<-1/beta2
+
+
+EM1<-p1
+EM2<-p2
+
+
+EX1<-EB1*EM1
+EX2<-EB2*EM2
+
+ES<-EX1+EX2
+c(ES,EX1,EX2,EM1,EM2,EB1,EB2)
+
+#Variance
+varB1<-(1/beta1^2)
+varB2<-(1/beta2^2)
+
+varM1<-p1
+varM2<-p2
+
+varX1<-EM1*varB1+varM1*(EB1^2)
+varX2<-EM2*varB2+varM2*(EB2^2)
+
+varS<-varX1+varX2
+
+c(varS,varX1,varX2,varM1,varM2,varB1,varB2)
+
+#panjer
+panjer.poisson<-function(lam,ff,smax)
+{
+  aa<-0
+  bb<-lam
+  ll<-length(ff)
+  ffs<-exp(lam*(ff[1]-1)) 
+  ff<-c(ff,rep(0,smax-ll+1))
+  for (i in 1 :smax)
+  {
+    j<-i+1
+    ffs<-c(ffs,(1/(1-aa*ff[1]))*sum(ff[2 :j]*ffs[i :1]*(bb*(1 :i)/i+aa)))
+  }
+  return(ffs)
+}
+
+
+
+#Nous cherchons gamma_k
+q<-beta1/beta2
+lambda_n<-p1+p2
+alpha<-1/6
+fk0<-0
+fk1<-alpha*q+(1-alpha)
+k<-2:1000
+fkv<-function(k) {
+  alpha*q*((1-q)^(k-1))
+}
+
+fkv2<-sapply(k, function(k) fkv(k)) 
+
+fk<-c(fk0,fk1,fkv2)
+precision<-1-sum(fk)
+precision
+
+gamma_k <- panjer.poisson(lambda_n , fk, 1000)       
+
+gamma_k[1]
+gamma_k[2]
+gamma_k[6]
+gamma_k[11]
+gamma_k[21]
+c(gamma_k[1],gamma_k[2],gamma_k[6],gamma_k[11],gamma_k[21])
+
+#Fonction de répartition de S
+x<-0:1000
+Fs <- function(x) gamma_k[1] + sum(gamma_k[-1] * pgamma(x, (1:1000), beta2))
+FS<-sapply(x, Fs)
+
+plot(x,FS,type="l",xlim=c(0,400),lty=1, lwd=2,main="Fonction de Repartition de S", xlab="x", ylab="FS(x)",col="blue")
+points(w,points_enonce,col="red",lty=2,lwd=2)
+legend(220, 0.2, legend=c("FS(x)","Points demandés"),pch=c(NA,1,NA),lty=c(1,NA,2), cex=1.1,bg='lightgrey',lwd=2:2,col=c("blue","red","purple"))
+
+
+#valeurs demandées dans le sujet
+
+c(FS[1],FS[2],FS[6],FS[11],FS[21])
+
+w<-c(1,51,101,201,301,401)
+points_enonce<-sapply(w, Fs)
+
+
+valeur_enonce_FS<-cbind(FS[1],FS[51],FS[101],FS[201],FS[301],FS[401])
+round(valeur_enonce_FS,digits=3)
+
+#densité
+x<-0:1000
+fs <- function(x) sum(gamma_k[-1] * dgamma(x, (1:1000), beta2))
+fS<-sapply(x, fs)
+
+plot(x,fS,type="l",xlim=c(0,400))
+
+sum(x*fS)
+
+
+#espérance tronquée par X
+kk<-1:1000
+
+ETS <- function(x) sum(gamma_k[-1] *(1-pgamma(x, kk+1, beta2))*(kk/beta2))
+ETSF<-sapply(x, ETS)
+ETSF
+
+plot(x,ETSF,type="l",lty=1, lwd=2,main="Espérance Tronquée de S", xlab="x", ylab="E[S x 1 {S>x}]",col="blue", xlim=c(0,200))
+abline(h=ES,col="purple", lty=2, lwd=2)
+legend(80, 38, legend=c("Espérance Tronquée de S","E[S]" 
+), col=c("blue","purple"), 
+lty=c(1,2,2), cex=1.1,bg='lightgrey',lwd=2:2)
+
+
+
+#calcul de la vaR
+kappa<-seq(0,0.999,0.001)
+
+VaRS<-function(kappa) {
+  sum(FS<kappa)
+}
+
+VaR<-sapply(kappa, function(kappa) VaRS(kappa))
+
+
+cbind(kappa,VaR)
+
+kappa_sujet<-c(0.9,0.99,0.999)
+
+VaR_sujet<-sapply(kappa_sujet,function(kappa_sujet) VaRS(kappa_sujet))
+
+plot(kappa,VaR,type="l")
+
+plot(kappa,VaR,type="l",lty=1, lwd=2,main="Value at Risk de S", xlab="kappa", ylab="VaR(S)",col="blue")
+points(kappa_sujet,VaR_sujet,col="red",lty=2,lwd=2)
+legend(0, 145, legend=c("Value at Risk de S","Points demandés"),pch=c(NA,1,NA),lty=c(1,NA,2), cex=1.1,bg='lightgrey',lwd=2:2,col=c("blue","red","purple"))
+
+
+#TVAR
+FsVAR <- function(VaR) gamma_k[1] + sum(gamma_k[-1] * pgamma(VaR, 1:1000, beta2))
+FSVAR2<-sapply(VaR, FsVAR)
+
+
+ETSVAR <- function(VaR) sum(gamma_k[-1] *(1-pgamma(VaR, kk+1, beta2))*(kk/beta2))
+ETSFVAR<-sapply(VaR, ETSVAR)
+
+
+
+P1<-(1/(1-kappa))*ETSFVAR
+P2<-(FSVAR2-kappa)*VaR*(1/(1-kappa))
+TVAR<-P1+P2
+
+#valeurs demandées dans le sujet
+TVAR_sujet<-c(TVAR[901],TVAR[991],TVAR[1000])
+cbind(kappa,TVAR)
+
+plot(kappa,TVAR,type="l",lty=1, lwd=2,main="Tail Value at Risk de S", xlab="kappa", ylab="TVaR(S)",col="blue",ylim=c(0,170))
+abline(h=ES,col="purple", lty=2, lwd=2)
+points(kappa_sujet,TVAR_sujet,col="red",lty=2,lwd=2)
+legend(0.0, 150, legend=c("TVaR de S","Points demandés", "E[S]"),pch=c(NA,1,NA),lty=c(1,NA,2), cex=1.1,bg='lightgrey',lwd=2:2,col=c("blue","red","purple"))
+
+
+#calcule des valeurs précisées dans l'énoncé pour VAR et TVAR
+kappa_sujet<-cbind(kappa[901],kappa[991],kappa[1000])
+
+VaR_sujet<-sapply(kappa_sujet, function(kappa_sujet) VaRS(kappa_sujet))
+
+VaR_sujet2<-cbind(VaR[901],VaR[991],VaR[1000])
+
+TVaR_sujet<-cbind(TVAR[901],TVAR[991],TVAR[1000])
